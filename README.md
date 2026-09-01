@@ -1,2 +1,7 @@
 # SNe-HII-DSL
-Analysis of SNe Ia and H II galaxy constraints in wCDM and dynamical-speed-of-light cosmologies.
+
+Companion material for the manuscript:
+
+**Empirical indications from SNe Ia and H II galaxies toward a dynamical-speed-of-light cosmology**
+
+The repository is currently being prepared. The present manuscript draft is available as `Paper2.pdf`.
