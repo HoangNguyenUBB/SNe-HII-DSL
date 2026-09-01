@@ -1,6 +1,6 @@
 # Reproducibility Package
 
-This repository contains the Python scripts used to reproduce the numerical results, tables, and figures of the manuscript *Indications of a parsimonious luminosity-distance relation in progenitor-age-corrected Type Ia supernova data*.
+This repository contains the Python scripts used to reproduce the numerical results, tables, and figures of the manuscript *Empirical indications from SNe Ia and H II galaxies toward a dynamical-speed-of-light cosmology*.
 
 This repository contains all Python scripts required to reproduce the numerical analyses, tables, and figures presented in the manuscript.
 
