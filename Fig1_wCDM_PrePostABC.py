@@ -1,8 +1,7 @@
 """
-Create three flat-wCDM contour sets in the same frame:
-    1) SNe with z <  Z_BREAK_1
-    2) SNe with z >= Z_BREAK_1 & z < Z_BREAK_2
-    3) SNe with z >= Z_BREAK_2
+Create two flat-wCDM contour sets in the same frame:
+    1) SNe with z <  Z_BREAK
+    2) SNe with z >= Z_BREAK
 
 Pantheon+ and DES are combined with block-diagonal covariance.
 Each redshift subset profiles its own Pantheon+ and DES H0 nuisance
@@ -10,10 +9,14 @@ parameters, using only the datasets actually present in that subset.
 
 Outputs
 -------
-Figure_wCDM_split_z.pdf
-Figure_wCDM_split_z.png
-
-Adapted from the user's July 2026 Figure 2 script.
+Figure_wCDM.Panel_(I).pdf
+Figure_wCDM.Panel_(II).pdf
+Figure_wCDM.Panel_(III).pdf
+Figure_wCDM.Panel_(IV).pdf
+Figure_wCDM.Panel_(V).pdf
+Figure_wCDM.Panel_(VI).pdf
+Figure_wCDM.Panel_(VII).pdf
+Figure_wCDM.Panel_(VIII).pdf
 """
 
 import numpy as np
@@ -29,23 +32,22 @@ from matplotlib.ticker import FuncFormatter
 # User settings
 # ============================================================
 
-AGE_CORRECTION_LIST = np.array([0,1])
+AGE_CORRECTION_LIST = np.array([0, 1])
     
-Z_BREAK_LIST = np.array([2.3, 0.33]) #, 0.5, 0.7, 1.])
+Z_BREAK_LIST = np.array([2.3, 0.33])
 
-FIXING_H0_LIST = np.array([0,1])
+FIXING_H0_LIST = np.array([0, 1])
 USE_WCDM_AS_FIDUCIAL = 1
 
 NUMBER_OF_CONTOURS_PLOT = 2
    
 OMEGA_M_MIN, OMEGA_M_MAX = 0., 0.6
 W_MIN, W_MAX = -1.5, 0.0
-RESOLUTION_OM, RESOLUTION_W = 0.05, 0.05
+# Change RESOLUTION_OM, RESOLUTION_W to smaller value if you want a finer grid
+RESOLUTION_OM, RESOLUTION_W = 0.02, 0.02
 N_OMEGA, N_W = int((OMEGA_M_MAX - OMEGA_M_MIN)/RESOLUTION_OM) + 1, int((W_MAX - W_MIN)/RESOLUTION_W) + 1
 
 numeric_label = ["(I)", "(II)", "(III)", "(IV)", "(V)", "(VI)", "(VII)", "(VIII)"]
-# numeric_label = ["(I)", "(II)", "(III)", "(IV)]
-# numeric_label = ["(V)", "(VI)", "(VII)", "(VIII)"]
 numeric_count = 0
 
 for FIXING_H0 in FIXING_H0_LIST:
@@ -92,8 +94,8 @@ for FIXING_H0 in FIXING_H0_LIST:
                 H0_HALFWIDTH = 100.0
                 
             H0_BOUNDS = {
-                0: (max(1e-6, H0PAN_FID - H0_HALFWIDTH-1.e-6), H0PAN_FID + H0_HALFWIDTH+1.e-6),   # Pantheon+: a_Pan <= H0Pan <= b_Pan
-                1: (max(1e-6, H0DES_FID - H0_HALFWIDTH-1.e-6), H0DES_FID + H0_HALFWIDTH+1.e-6),   # DES:       a_DES <= H0DES <= b_DES
+                0: (max(1e-6, H0PAN_FID - H0_HALFWIDTH-1.e-6), H0PAN_FID + H0_HALFWIDTH+1.e-6),   # Pantheon+
+                1: (max(1e-6, H0DES_FID - H0_HALFWIDTH-1.e-6), H0DES_FID + H0_HALFWIDTH+1.e-6),   # DES
             }
             
             LOW_Z_PLOT_COLOR = "limegreen"
@@ -319,7 +321,7 @@ for FIXING_H0 in FIXING_H0_LIST:
                     # are irrelevant to the subset being fitted.
                     # ---------------------------------------------------------------
                     self.data_zmax = float(np.max(self.z))
-                    self.zmax = 2.3 # 1.001 * self.data_zmax
+                    self.zmax = 2.3
             
                     self.n_int = 20000
             
@@ -332,12 +334,6 @@ for FIXING_H0 in FIXING_H0_LIST:
             
                     self.zp1_int = 1.0 + self.z_int
                     self.dz_int = np.diff(self.z_int)
-            
-                    print(
-                        f"{self.label}: "
-                        f"data zmax={self.data_zmax:.6f}, "
-                        f"integration zmax={self.zmax:.6f}"
-                    )
             
                 def wcdm_integral_at_data(self, omega_de, w):
                     """
@@ -501,23 +497,7 @@ for FIXING_H0 in FIXING_H0_LIST:
                         np.inf,
                         dtype=float,
                     )
-            
-                    n_grid_points = len(omega_m_grid) * len(w_grid)
-            
-                    print(f"\nEvaluating {self.label}: N={len(self.z)}")
-                    print(
-                        f"Data range: "
-                        f"{np.min(self.z):.6f} <= z <= {np.max(self.z):.6f}"
-                    )
-                    print(
-                        f"Integration range: "
-                        f"0 <= z <= {self.zmax:.6f}"
-                    )
-                    print(
-                        f"Grid: {len(omega_m_grid)} x {len(w_grid)} "
-                        f"= {n_grid_points} points"
-                    )
-            
+                        
                     for iw, w_value in enumerate(w_grid):
                         if iw % 10 == 0:
                             print(f"  row {iw + 1:3d} of {len(w_grid)}", end="")
@@ -539,15 +519,7 @@ for FIXING_H0 in FIXING_H0_LIST:
                         raise RuntimeError(
                             f"No valid grid points for {self.label}."
                         )
-            
-                    n_invalid = np.size(chi2_grid) - np.count_nonzero(finite)
-            
-                    print(
-                        f"Finite grid points: {np.count_nonzero(finite)} "
-                        f"of {chi2_grid.size}"
-                    )
-                    print(f"Invalid grid points: {n_invalid}")
-            
+                                    
                     # Find the best finite grid point.
                     finite_chi2 = np.where(
                         finite,
@@ -576,24 +548,23 @@ for FIXING_H0 in FIXING_H0_LIST:
             
                     delta_chi2 = chi2_grid - chi2_min
             
-                    print(f"\nBest fit: {self.label}")
-                    print("-" * (10 + len(self.label)))
-                    print(f"Omega_M = {omega_m_best:.8f}")
-                    print(f"Omega_DE= {omega_de_best:.8f}")
-                    print(f"w       = {w_best:.8f}")
+                    print(f"\n{self.label} best fit:")
+                    print(f"Omega_M = {omega_m_best:.3f}")
+                    print(f"Omega_DE= {omega_de_best:.3f}")
+                    print(f"w       = {w_best:.3f}")
             
                     if 0 in h0_best:
-                        print(f"H0Pan   = {h0_best[0]:.8f}")
+                        print(f"H0Pan   = {h0_best[0]:.2f}")
             
                     if 1 in h0_best:
-                        print(f"H0DES   = {h0_best[1]:.8f}")
+                        print(f"H0DES   = {h0_best[1]:.2f}")
             
-                    print(f"grid chi2 minimum = {grid_chi2_min:.8f}")
+                    print(f"grid chi2 minimum = {grid_chi2_min:.1f}")
             
-                    if chi2_min != grid_chi2_min:
-                        print(f"adopted chi2 min  = {chi2_min:.8f}")
-                    else:
-                        print(f"chi2              = {chi2_min:.8f}")
+                    # if chi2_min != grid_chi2_min:
+                    #     print(f"adopted chi2 min  = {chi2_min:.1f}")
+                    # else:
+                    #     print(f"chi2              = {chi2_min:.1f}")
             
                     # Coasting / logarithmic point:
                     # Omega_M = 0, Omega_DE = 1, w = -1/3.
@@ -601,26 +572,6 @@ for FIXING_H0 in FIXING_H0_LIST:
                         1.0,
                         -1.0 / 3.0,
                     )
-            
-                    if np.isfinite(chi2_coast):
-                        print(
-                            f"Delta chi2 at coasting = "
-                            f"{chi2_coast - chi2_min:.8f}"
-                        )
-            
-                        if 0 in h0_coast:
-                            print(
-                                f"H0Pan at coasting = "
-                                f"{h0_coast[0]:.8f}"
-                            )
-            
-                        if 1 in h0_coast:
-                            print(
-                                f"H0DES at coasting = "
-                                f"{h0_coast[1]:.8f}"
-                            )
-                    else:
-                        print("Coasting point returned a non-finite chi2.")
             
                     return {
                         "chi2": chi2_grid,
@@ -715,10 +666,6 @@ for FIXING_H0 in FIXING_H0_LIST:
                     h0_bounds=H0_BOUNDS,
                 )
             
-            print("\nSample split")
-            print("------------")
-            print(f"z in (0.0,{Z_BREAK:g}): {np.count_nonzero(low_mask)} SNe")
-            print(f"z in [{Z_BREAK:g},2.3): {np.count_nonzero(high_mask)} SNe")
             print(
                 f"Low-z Pan+/DES: "
                 f"{np.count_nonzero(low_mask & (dataset_id == 0))}/"
@@ -920,8 +867,8 @@ for FIXING_H0 in FIXING_H0_LIST:
             # Overlay model points
             # ============================================================
             
-            solid = np.loadtxt("Chavez-fig-5-solid.txt", skiprows=1)
-            rim   = np.loadtxt("..\Chavez-fig-5-rim_simplified.txt", skiprows=1)
+            solid = np.loadtxt("Chavez_fig_6_solid.txt", skiprows=1)
+            rim   = np.loadtxt("Chavez_fig_6_rim.txt", skiprows=1)
             
             step = 2
             ax.scatter(
@@ -978,25 +925,12 @@ for FIXING_H0 in FIXING_H0_LIST:
             plt.tight_layout()
             
             output_pdf = "Figure_wCDM.Panel_" + numeric_label[numeric_count] + ".pdf"
-            output_png = "Figure_wCDM.Panel_" + numeric_label[numeric_count] + ".png"
             plt.savefig(output_pdf, bbox_inches="tight")
-            plt.savefig(output_png, dpi=300, bbox_inches="tight")
-            plt.show()
             
-            print("\nSaved", output_pdf)
-            print("Saved", output_png)
             elapsed = round(time.perf_counter() - t0)
             if elapsed < 60:
                 print(f"Elapsed: {elapsed:.1f} sec.")
             else:
                 print(f"Elapsed: {elapsed/60:.1f} min.")
             numeric_count += 1
-                
-# np.savez(
-#     "wCDM_chi2_grid_PreABC.npz",
-#     w_grid=w_grid,
-#     Om_grid=omega_m_grid,
-#     chi2_grid=low_result["chi2"]
-# )
-
-# print("Saved wCDM_chi2_grid.npz")
+plt.show()

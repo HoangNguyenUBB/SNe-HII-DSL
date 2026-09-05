@@ -1,24 +1,19 @@
 # Fit wCDM model to Merged data
-# (original or age corrected per Son et al)
+# (original or age corrected per YONSEI)
 
 import numpy as np
 import pandas as pd
-from scipy.linalg import cho_factor, cho_solve
 import warnings
-import time
-import sys
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # User-editable inputs / filenames
-DATASETS_IN_USE = "All"  # Must be "All" for this scripts
 
-AGE_CORRECTION = 1
-
-Z_MIN, Z_MAX = 0., 0.33
+AGE_CORRECTION = True
+Z_MIN, Z_MAX = 0., 2.3
 
 # --------------------------
 
-print("wCDM fit | Use", DATASETS_IN_USE, "data |", ("Post-ABC" if AGE_CORRECTION else "Pre-ABC"))
+print("wCDM fit |", ("Post-ABC" if AGE_CORRECTION else "Pre-ABC"))
       
 def age_correction(mu, z, AGE_CORRECTION):
     mu_corrected = mu.copy()
@@ -158,36 +153,23 @@ def make_X(dataset_id):
 # Combine and NO SORTING
 # ============================================================
 
-if DATASETS_IN_USE == "All":
-    from scipy.linalg import block_diag
-    
-    # Hoang hack to run only "Pan"
-    # zDES = zPan
-    # zHEL_DES = zHEL_Pan
-    # muDES = muPan
-    # covDES = covPan
-    
-    # Hoang hack to run only "DES"
-    # zPan = zDES
-    # zHEL_Pan = zHEL_DES
-    # muPan = muDES
-    # covPan = covDES
-    
-    # Merge arrays: Pan+ first, DES second
-    z = np.concatenate([zPan, zDES])
-    zHEL = np.concatenate([zHEL_Pan, zHEL_DES])
-    mu_data = np.concatenate([muPan, muDES])
-    
-    # Block diagonal covariance
-    cov = block_diag(covPan, covDES)
-    
-    # Dataset label: 0 = Pan+, 1 = DES
-    dataset_id = np.concatenate([
-        np.zeros(len(zPan), dtype=int),
-        np.ones(len(zDES), dtype=int)
-    ])
-    
-    print("Merged dataset: N Pan+ =", len(zPan),", N DES =", len(zDES),", N total =", len(z))
+from scipy.linalg import block_diag
+
+# Merge arrays: Pan+ first, DES second
+z = np.concatenate([zPan, zDES])
+zHEL = np.concatenate([zHEL_Pan, zHEL_DES])
+mu_data = np.concatenate([muPan, muDES])
+
+# Block diagonal covariance
+cov = block_diag(covPan, covDES)
+
+# Dataset label: 0 = Pan+, 1 = DES
+dataset_id = np.concatenate([
+    np.zeros(len(zPan), dtype=int),
+    np.ones(len(zDES), dtype=int)
+])
+
+print("Merged dataset: N Pan+ =", len(zPan),", N DES =", len(zDES),", N total =", len(z))
 
 
 # ============================================================
@@ -636,18 +618,6 @@ print(f"chi2     = {chi2:.1f}")
 print(f"AIC      = {AIC:.1f}")
 print(f"BIC      = {BIC:.1f}")
 
-# if omega_at_lower:
-#     print()
-#     print("WARNING: OmegaDE reached its lower bound.")
-
-# if omega_at_upper:
-#     print()
-#     print("WARNING: OmegaDE reached its upper bound OmegaDE = 1.")
-#     print(
-#         "The best fit may lie on the pure-w-fluid boundary; "
-#         "formal symmetric errors should be treated cautiously."
-#     )
-
 if w_at_lower:
     print()
     print("WARNING: w reached its lower bound.")
@@ -655,7 +625,6 @@ if w_at_lower:
 if w_at_upper:
     print()
     print("WARNING: w reached its upper bound.")
-
 
 
 # ============================================================
@@ -811,73 +780,3 @@ print(
     f"Delta BIC  (Kolb - wCDM) = "
     f"{BIC_kolb - BIC:+.1f}"
 )
-
-I_num = wcdm_integral(
-    OmegaDE=1.0,
-    w=-1.0/3.0
-)
-
-I_exact = np.log1p(z)
-
-diff = I_num - I_exact
-
-print()
-print("Kolb integration diagnostic")
-print("---------------------------")
-print("max |I_num - I_exact| =", np.max(np.abs(diff)))
-print("mean |difference|     =", np.mean(np.abs(diff)))
-print("max relative error    =",
-      np.max(np.abs(diff / I_exact)))
-# # ------------------------------------------------------------
-# # 13. Export fitted values
-# # ------------------------------------------------------------
-
-# mu_fit = mu_wcdm([
-#     H0Pan_best,
-#     H0DES_best,
-#     OmegaDE_best,
-#     w_best
-# ])
-
-# residue = mu_data - mu_fit
-
-# H0_fit_row = np.where(
-#     idx == 0,
-#     H0Pan_best,
-#     H0DES_best
-# )
-
-# output = np.column_stack((
-#     idx,
-#     z,
-#     zHEL,
-#     H0_fit_row,
-#     mu_data,
-#     mu_fit,
-#     residue
-# ))
-
-# np.savetxt(
-#     "wCDM_mu_fit.txt",
-#     output,
-#     fmt=[
-#         "%d",       # idx
-#         "%.10f",    # z
-#         "%.10f",    # zHEL
-#         "%.10f",    # H0_fit
-#         "%.10f",    # mu_obs
-#         "%.10f",    # mu_fit
-#         "%.10f"     # residue
-#     ],
-#     header=(
-#         "idx z zHEL H0_fit "
-#         "mu_obs mu_fit residue"
-#     ),
-#     comments=""
-# )
-
-# print()
-# print("Saved wCDM_mu_fit.txt")
-
-    
-sys.exit()

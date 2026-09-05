@@ -1,40 +1,45 @@
 # Fit wCDM model to Merged data
-# (original or age corrected per Son et al)
+# (original or age corrected per YONSEI)
 
 import numpy as np
 import pandas as pd
-from scipy.linalg import cho_factor, cho_solve
 import warnings
-import time
-import sys
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # User-editable inputs / filenames
-DATASETS_IN_USE = "All"  # Must be "All" for this scripts
+AGE_CORRECTION = True
+Z_MIN, Z_MAX =  0, 2.3
 
-AGE_CORRECTION = 1
-USE_FULL_COVAR = 1
-
-Z_BEND = 0.
-
+if AGE_CORRECTION:
+# Using Kolb (global fit post-ABC)
+    H0PAN_FID_KOLB = 72.56
+    H0DES_FID_KOLB = 68.79
+# Using wCDM (global fit post-ABC, common w and OM)
+    H0PAN_FID_WCDM = 72.78
+    H0DES_FID_WCDM = 69.20
+else:
+# Using Kolb (global fit pre-ABC)
+    H0PAN_FID_KOLB = 70.64
+    H0DES_FID_KOLB = 65.66
+# Using wCDM (global fit pre-ABC, common w and OM)
+    H0PAN_FID_WCDM = 72.70
+    H0DES_FID_WCDM = 69.13
+    
 # --------------------------
 
-print("wCDM fit | Use", DATASETS_IN_USE, "data |", ("Age-corrected" if AGE_CORRECTION else "Raw"), "|", ("Full covar" if USE_FULL_COVAR else "Only diagonal covar"),
-      # "| Fid H0 =", H0)
-)
+print("wCDM fit |", ("Post-ABC" if AGE_CORRECTION else "Pre-ABC"),
+      "| H0PAN_FID_WCDM = ", H0PAN_FID_WCDM, "| H0DES_FID_WCDM = ", H0DES_FID_WCDM,
+      "| H0PAN_FID_KOLB = ", H0PAN_FID_KOLB, "| H0DES_FID_KOLB = ", H0DES_FID_KOLB)
       
 def age_correction(mu, z, AGE_CORRECTION):
     mu_corrected = mu.copy()
     if AGE_CORRECTION:
         correction = 0.183 * (1.0 - np.exp(-2.2*z))
-        correction *= np.minimum(1.0, z / Z_BEND)
-        # correction = 0.19 * (1.0 - np.exp(-z/0.5))
         mu_corrected -= correction
     return mu_corrected
 
 c_light = 299792.458
 
-# --------------------------
 # Load data
 
 # ============================================================
@@ -57,15 +62,6 @@ covPan = np.load(COV_FILE)
 assert covPan.shape[0] == len(zPan)
 
 sigmuPan = np.sqrt(np.diag(covPan))
-
-# dLPan = 10.0**((muPan - 25.0)/5.0)
-# yPan = dLPan * H0_PAN / c_light / (1.0 + zHEL_Pan)
-
-# yerrPan = yPan * np.log(10.0) / 5.0 * sigmuPan
-
-# zero off-diagonals in place
-if not USE_FULL_COVAR:
-    covPan = np.diag(np.diag(covPan))         # create matrix with only diagonal entries
 
 # ============================================================
 # DES
@@ -112,22 +108,6 @@ assert covDES.shape[0] == len(zDES)
 
 sigmuDES = np.sqrt(np.diag(covDES))
 
-# dLDES = 10.0**((muDES - 25.0)/5.0)
-# yDES = dLDES * H0_DES / c_light / (1.0 + zHEL_DES)
-
-# yerrDES = yDES * np.log(10.0) / 5.0 * sigmuDES
-
-# zero off-diagonals in place
-if not USE_FULL_COVAR:
-    covDES = np.diag(np.diag(covDES))         # create matrix with only diagonal entries
-
-
-# ============================================================
-# Restrict both datasets to z <= Z_MAX
-# ============================================================
-
-Z_MIN, Z_MAX = 0., 2.5
-
 # ------------------------------------------------------------
 # Pantheon+
 # ------------------------------------------------------------
@@ -145,16 +125,15 @@ covPan = covPan[np.ix_(idxPan, idxPan)]
 assert covPan.shape == (len(zPan), len(zPan))
 
 print()
-print(f"Pantheon+ restricted to z <= {Z_MAX}:")
+print(f"Pantheon+ restricted to z between {Z_MIN} and {Z_MAX}:")
 print(f"  N = {len(zPan)}")
 print(f"  z range = [{zPan.min():.6f}, {zPan.max():.6f}]")
-
 
 # ------------------------------------------------------------
 # DES
 # ------------------------------------------------------------
 
-maskDES = zDES <= Z_MAX
+maskDES = (zDES >= Z_MIN) & (zDES < Z_MAX)
 idxDES = np.where(maskDES)[0]
 
 zDES = zDES[idxDES]
@@ -166,7 +145,7 @@ covDES = covDES[np.ix_(idxDES, idxDES)]
 assert covDES.shape == (len(zDES), len(zDES))
 
 print()
-print(f"DES restricted to z <= {Z_MAX}:")
+print(f"DES5Y restricted to z between {Z_MIN} and {Z_MAX}:")
 print(f"  N = {len(zDES)}")
 print(f"  z range = [{zDES.min():.6f}, {zDES.max():.6f}]")
 
@@ -189,36 +168,23 @@ def make_X(dataset_id):
 # Combine and NO SORTING
 # ============================================================
 
-if DATASETS_IN_USE == "All":
-    from scipy.linalg import block_diag
-    
-    # Hoang hack to run only "Pan"
-    # zDES = zPan
-    # zHEL_DES = zHEL_Pan
-    # muDES = muPan
-    # covDES = covPan
-    
-    # Hoang hack to run only "DES"
-    # zPan = zDES
-    # zHEL_Pan = zHEL_DES
-    # muPan = muDES
-    # covPan = covDES
-    
-    # Merge arrays: Pan+ first, DES second
-    z = np.concatenate([zPan, zDES])
-    zHEL = np.concatenate([zHEL_Pan, zHEL_DES])
-    mu_data = np.concatenate([muPan, muDES])
-    
-    # Block diagonal covariance
-    cov = block_diag(covPan, covDES)
-    
-    # Dataset label: 0 = Pan+, 1 = DES
-    dataset_id = np.concatenate([
-        np.zeros(len(zPan), dtype=int),
-        np.ones(len(zDES), dtype=int)
-    ])
-    
-    print("Merged dataset: N Pan+ =", len(zPan),", N DES =", len(zDES),", N total =", len(z))
+from scipy.linalg import block_diag
+
+# Merge arrays: Pan+ first, DES second
+z = np.concatenate([zPan, zDES])
+zHEL = np.concatenate([zHEL_Pan, zHEL_DES])
+mu_data = np.concatenate([muPan, muDES])
+
+# Block diagonal covariance
+cov = block_diag(covPan, covDES)
+
+# Dataset label: 0 = Pan+, 1 = DES
+dataset_id = np.concatenate([
+    np.zeros(len(zPan), dtype=int),
+    np.ones(len(zDES), dtype=int)
+])
+
+print("Merged dataset: N Pan+ =", len(zPan),", N DES =", len(zDES),", N total =", len(z))
 
 
 # ============================================================
@@ -304,8 +270,7 @@ if not np.any(idx == 1):
 
 
 
-
-Z_INT_MAX = 2.3
+Z_INT_MAX = 2.30
 N_INT = 20000
 
 z_grid = np.linspace(
@@ -398,29 +363,18 @@ def wcdm_integral(OmegaDE, w):
 # 5. wCDM distance-modulus model
 # ------------------------------------------------------------
 
-def mu_wcdm(params):
+def mu_wcdm(params, H0Pan, H0DES):
     """
+    Flat wCDM distance modulus with fixed H0 values.
+
     Parameters
     ----------
-    params[0] : H0Pan
-    params[1] : H0DES
-    params[2] : OmegaDE
-    params[3] : w
+    params[0] : OmegaDE
+    params[1] : w
     """
 
-    H0Pan, H0DES, OmegaDE, w = params
+    OmegaDE, w = params
 
-    if (
-        not np.isfinite(H0Pan)
-        or not np.isfinite(H0DES)
-        or not np.isfinite(OmegaDE)
-        or not np.isfinite(w)
-        or H0Pan <= 0.0
-        or H0DES <= 0.0
-    ):
-        return np.full(n_data, 1.0e30)
-
-    # Assign a separate fitted H0 to each dataset
     H0_row = np.where(
         idx == 0,
         H0Pan,
@@ -447,7 +401,7 @@ def mu_wcdm(params):
     return 5.0 * np.log10(dL) + 25.0
 
 
-def whitened_resid(params):
+def whitened_resid(params, H0Pan, H0DES):
     """
     Whitened residual:
 
@@ -458,7 +412,7 @@ def whitened_resid(params):
         chi2 = r_white.T @ r_white
     """
 
-    residual = mu_data - mu_wcdm(params)
+    residual = mu_data - mu_wcdm(params, H0Pan, H0DES)
 
     return solve_triangular(
         L,
@@ -485,29 +439,24 @@ def whitened_resid(params):
 # ------------------------------------------------------------
 
 p0 = np.array([
-    72.0,    # H0Pan
-    69.0,    # H0DES
     0.70,    # OmegaDE
     -1.0     # w
 ])
 
 lower_bounds = np.array([
-    30.0,    # H0Pan
-    30.0,    # H0DES
     0.0,     # OmegaDE
     -3.0     # w
 ])
 
 upper_bounds = np.array([
-    120.0,   # H0Pan
-    120.0,   # H0DES
-    2.0,     # OmegaDE
+    1.0,     # OmegaDE
     0.5      # w
 ])
 
 res = least_squares(
     whitened_resid,
     p0,
+    args=(H0PAN_FID_WCDM, H0DES_FID_WCDM),
     bounds=(lower_bounds, upper_bounds),
     method="trf",
     jac="2-point",
@@ -527,16 +476,12 @@ if not res.success:
 # 7. Best-fit parameters
 # ------------------------------------------------------------
 
-H0Pan_best = float(res.x[0])
-H0DES_best = float(res.x[1])
-OmegaDE_best = float(res.x[2])
-w_best = float(res.x[3])
-
-# OmegaM_best = 1.0 - OmegaDE_best
+OmegaDE_best = float(res.x[0])
+w_best = float(res.x[1])
 
 chi2 = float(np.dot(res.fun, res.fun))
 
-n_par = 4
+n_par = 2
 dof = n_data - n_par
 
 
@@ -564,11 +509,8 @@ parameter_variances = np.maximum(
 
 parameter_errors = np.sqrt(parameter_variances)
 
-sigH0Pan = float(parameter_errors[0])
-sigH0DES = float(parameter_errors[1])
-sigOmegaDE = float(parameter_errors[2])
-sigw = float(parameter_errors[3])
-
+sigOmegaDE = float(parameter_errors[0])
+sigw = float(parameter_errors[1])
 # sigOmegaM = sigOmegaDE
 
 denom = np.outer(parameter_errors, parameter_errors)
@@ -603,28 +545,28 @@ n_des = int(np.count_nonzero(idx == 1))
 
 omega_at_lower = np.isclose(
     OmegaDE_best,
-    lower_bounds[2],
+    lower_bounds[0],
     rtol=0.0,
     atol=1.0e-6
 )
 
 omega_at_upper = np.isclose(
     OmegaDE_best,
-    upper_bounds[2],
+    upper_bounds[0],
     rtol=0.0,
     atol=1.0e-6
 )
 
 w_at_lower = np.isclose(
     w_best,
-    lower_bounds[3],
+    lower_bounds[1],
     rtol=0.0,
     atol=1.0e-6
 )
 
 w_at_upper = np.isclose(
     w_best,
-    upper_bounds[3],
+    upper_bounds[1],
     rtol=0.0,
     atol=1.0e-6
 )
@@ -634,168 +576,123 @@ w_at_upper = np.isclose(
 # 12. Report
 # ------------------------------------------------------------
 
-# print()
-# print("Flat wCDM mu-space fit")
-# print("----------------------")
-# print("Merged dataset: separate H0Pan and H0DES")
-# print()
+print()
+print("Flat wCDM mu-space fit")
+print("----------------------")
+print("Merged dataset: separate H0Pan and H0DES")
+print()
 
-# print(f"N Pan+   = {n_pan}")
-# print(f"N DES    = {n_des}")
-# print(f"N total  = {n_data}")
+print(f"N Pan+   = {n_pan}")
+print(f"N DES    = {n_des}")
+print(f"N total  = {n_data}")
 print()
 
 print(
-    f"H0Pan    = {H0Pan_best:.8f}"
-    f" +/- {sigH0Pan:.10f}"
+    f"H0Pan    = {H0PAN_FID_WCDM:.2f}"
 )
 
 print(
-    f"H0DES    = {H0DES_best:.8f}"
-    f" +/- {sigH0DES:.10f}"
+    f"H0DES    = {H0DES_FID_WCDM:.2f}"
 )
 
 print(
-    f"OmegaDE  = {OmegaDE_best:.8f}"
-    f" +/- {sigOmegaDE:.8f}"
+    f"w        = {w_best:.3f}"
+    f" +/- {sigw:.3f}"
 )
 
 print(
-    f"OmegaM   = {1.0 - OmegaDE_best:.8f}"
-    f" +/- {sigOmegaDE:.8f}"
+    f"OmegaM   = {1.0 - OmegaDE_best:.3f}"
+    f" +/- {sigOmegaDE:.3f}"
 )
-
-print(
-    f"w        = {w_best:.8f}"
-    f" +/- {sigw:.8f}"
-)
-
-# print()
-# print("Parameter correlation matrix:")
-# print("               H0Pan       H0DES     OmegaDE           w")
-
-# labels = [
-#     "H0Pan  ",
-#     "H0DES  ",
-#     "OmegaDE",
-#     "w      "
-# ]
-
-# for i, label in enumerate(labels):
-#     print(
-#         f"{label} "
-#         f"{corr_par[i,0]:12.8f} "
-#         f"{corr_par[i,1]:12.8f} "
-#         f"{corr_par[i,2]:12.8f} "
-#         f"{corr_par[i,3]:12.8f}"
-#     )
 
 print()
-print(f"chi2     = {chi2:.10f}")
-# print(f"dof      = {dof}")
-print(f"chi2/dof = {chi2 / dof:.6f}")
-print(f"AIC      = {AIC:.6f}")
-print(f"BIC      = {BIC:.6f}")
+print(f"chi2     = {chi2:.1f}")
+print(f"AIC      = {AIC:.1f}")
+print(f"BIC      = {BIC:.1f}")
 
-if omega_at_lower:
-    print()
-    print("WARNING: OmegaDE reached its lower bound.")
 
-if omega_at_upper:
-    print()
-    print("WARNING: OmegaDE reached its upper bound OmegaDE = 1.")
-    print(
-        "The best fit may lie on the pure-w-fluid boundary; "
-        "formal symmetric errors should be treated cautiously."
+# ============================================================
+# Chi2 at the Kolb point
+#
+# Kolb:
+#     OmegaM  = 0
+#     OmegaDE = 1
+#     w       = -1/3
+#
+# H0Pan and H0DES are independently fitted.
+# ============================================================
+
+OMEGADE_KOLB = 1.0
+W_KOLB = -1.0 / 3.0
+
+
+def mu_kolb_fixed():
+    H0_row = np.where(
+        idx == 0,
+        H0PAN_FID_KOLB,
+        H0DES_FID_KOLB
     )
 
-if w_at_lower:
-    print()
-    print("WARNING: w reached its lower bound.")
+    integral = wcdm_integral(
+        OMEGADE_KOLB,
+        W_KOLB
+    )
 
-if w_at_upper:
-    print()
-    print("WARNING: w reached its upper bound.")
+    dL = (
+        (c_light / H0_row)
+        * (1.0 + zHEL)
+        * integral
+    )
+
+    return 5.0 * np.log10(dL) + 25.0
 
 
-# ------------------------------------------------------------
-# 13. Export fitted values
-# ------------------------------------------------------------
-
-mu_fit = mu_wcdm([
-    H0Pan_best,
-    H0DES_best,
-    OmegaDE_best,
-    w_best
-])
-
-residue = mu_data - mu_fit
-
-H0_fit_row = np.where(
-    idx == 0,
-    H0Pan_best,
-    H0DES_best
+residual_kolb = (
+    mu_data
+    - mu_kolb_fixed()
 )
 
-output = np.column_stack((
-    idx,
-    z,
-    zHEL,
-    H0_fit_row,
-    mu_data,
-    mu_fit,
-    residue
-))
-
-np.savetxt(
-    "wCDM_mu_fit.txt",
-    output,
-    fmt=[
-        "%d",       # idx
-        "%.10f",    # z
-        "%.10f",    # zHEL
-        "%.10f",    # H0_fit
-        "%.10f",    # mu_obs
-        "%.10f",    # mu_fit
-        "%.10f"     # residue
-    ],
-    header=(
-        "idx z zHEL H0_fit "
-        "mu_obs mu_fit residue"
-    ),
-    comments=""
+rwhite_kolb = solve_triangular(
+    L,
+    residual_kolb,
+    lower=True,
+    check_finite=False
 )
+
+chi2_kolb = float(
+    np.dot(rwhite_kolb, rwhite_kolb)
+)
+
+n_par_kolb = 0
+
+AIC_kolb = chi2_kolb
+BIC_kolb = chi2_kolb
+
+# ------------------------------------------------------------
+# Kolb information criteria
+# ------------------------------------------------------------
 
 print()
-print("Saved wCDM_mu_fit.txt")
+print("Kolb point, fixed H0")
+print("--------------------")
+print(f"H0Pan_Kolb = {H0PAN_FID_KOLB:.2f}")
+print(f"H0DES_Kolb = {H0DES_FID_KOLB:.2f}")
+print(f"chi2_Kolb  = {chi2_kolb:.1f}")
+print(f"AIC Kolb   = {AIC_kolb:.1f}")
+print(f"BIC Kolb   = {BIC_kolb:.1f}")
 
+print()
+print(
+    f"Delta chi2 (Kolb - wCDM) = "
+    f"{chi2_kolb - chi2:+.1f}"
+)
 
-def chi2_by_dataset(params):
-    r = whitened_resid(params)
+print(
+    f"Delta AIC  (Kolb - wCDM) = "
+    f"{AIC_kolb - AIC:+.1f}"
+)
 
-    mask_pan = (idx == 0)
-    mask_des = (idx == 1)
-
-    chi2_pan = np.sum(r[mask_pan]**2)
-    chi2_des = np.sum(r[mask_des]**2)
-    chi2_tot = chi2_pan + chi2_des
-
-    return chi2_tot, chi2_pan, chi2_des
-
-params_best = [
-    H0Pan_best,
-    H0DES_best,
-    OmegaDE_best,
-    w_best
-]
-
-chi2_tot_w, chi2_pan_w, chi2_des_w = chi2_by_dataset(params_best)
-
-chi2_tot_w, chi2_pan_w, chi2_des_w = chi2_by_dataset(params_best)
-
-print(f"Pantheon+ chi2 = {chi2_pan_w:.4f}")
-print(f"DES       chi2 = {chi2_des_w:.4f}")
-print(f"Total     chi2 = {chi2_tot_w:.4f}")
-
-
-sys.exit()
+print(
+    f"Delta BIC  (Kolb - wCDM) = "
+    f"{BIC_kolb - BIC:+.1f}"
+)

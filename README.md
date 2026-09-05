@@ -1,8 +1,8 @@
 # Reproducibility Package
 
-This repository contains the Python scripts used to reproduce the numerical results, tables, and figures of the manuscript *Empirical indications from SNe Ia and H II galaxies toward a dynamical-speed-of-light cosmology*.
+This repository contains the Python scripts used to reproduce the main numerical analyses and figures of the manuscript
 
-This repository contains all Python scripts required to reproduce the numerical analyses, tables, and figures presented in the manuscript.
+*Empirical indications from SNe Ia and H II galaxies toward a dynamical-speed-of-light cosmology*.
 
 ---
 
@@ -10,7 +10,7 @@ This repository contains all Python scripts required to reproduce the numerical 
 
 The scripts were developed with Python 3.
 
-Required packages
+Required packages:
 
 ```text
 numpy
@@ -20,25 +20,6 @@ matplotlib
 ```
 
 No additional packages are required.
-
----
-
-### SciPy compatibility
-
-The scripts were originally developed using the `cumtrapz` function from `scipy.integrate`.
-
-In recent versions of SciPy, `cumtrapz` has been renamed to `cumulative_trapezoid`. If an `ImportError` occurs, simply replace
-
-```python
-from scipy.integrate import cumtrapz
-```
-
-with
-```python
-from scipy.integrate import cumulative_trapezoid as cumtrapz
-```
-
-No other modifications are required.
 
 ---
 
@@ -68,33 +49,32 @@ The Pantheon+ covariance matrix is stored as a NumPy array (`.npy`), while the D
 
 # Repository structure
 
-The workflow is
-
 ```text
-Raw data
-      │
-      ▼
-fit_*.py
-      │
-      ▼
-intermediate output (*.txt)
-      │
-      ├──► make_Table_*.py
-      └──► make_Figure_*.py
+convert_cov_to_npy.py
+    Converts the Pantheon+ covariance matrix to NumPy format.
 
-```
+wCDM_fit_floatH0.py
+    Computes the flat-wCDM best fits for Pantheon+ and DES,
+    with the corresponding H0 values adjusted independently.
 
-The fitting scripts perform the numerical analyses and generate intermediate output files used by the table and figure generation scripts.
+wCDM_fit_fixedH0.py
+    Computes the flat-wCDM best fits for Pantheon+ and DES,
+    with the corresponding H0 values fixed.
 
-The table scripts regenerate the manuscript tables.
+Fig1_wCDM_PrePostABC.py
+    Reproduces the eight panels of Fig. 1, showing the pre-ABC
+    and post-ABC flat-wCDM confidence regions and redshift-split
+    diagnostics.
 
-The figure scripts regenerate the manuscript figures.
-
+Fig2_DolgovBarrow_fit.py
+    Reproduces the two panels of Fig. 2 in the Dolgov-Barrow
+    (w, zeta) parameter plane.
+    
 ---
 
 # Age correction
 
-The progenitor-age correction used throughout the repository is $\Delta\mu(z)=0.183\left[1-\exp(-2.2z)\right]$ which is subtracted from the observed distance modulus whenever `AGE_CORRECTION = 1` is selected. (The distributed scripts have already been configured with the appropriate value of `AGE_CORRECTION` for each analysis (original or age-corrected data). Users should not modify this setting.)
+The progenitor-age correction used throughout the repository is $\Delta\mu(z)=0.183\left[1-\exp(-2.2z)\right]$ which is subtracted from the observed distance modulus whenever `AGE_CORRECTION = 1` is selected.
 
 ---
 
@@ -113,78 +93,17 @@ convert_cov_to_npy.py
 
 This converts the official Pantheon+ covariance matrix `Pantheon+SH0ES_STAT+SYS.cov` into the NumPy binary file `Pantheon+SH0ES_STAT+SYS.npy` which is subsequently used by all fitting scripts.
 
-## Step 2. Run the fitting scripts:
-
-#### Flat ΛCDM
-
+## Step 2. Produce Figs 1 and 2:
 ```
-fit_LCDM.Pan_original.py
-fit_LCDM.DES_original.py
-fit_LCDM.Joint_original.py
-fit_LCDM.Pan_age_corrected.py
-fit_LCDM.DES_age_corrected.py
-fit_LCDM.Joint_age_corrected.py
+Fig1_wCDM_PrePostABC.py
+Fig2_DolgovBarrow_fit.py
 ```
 
-#### Flat wCDM
-
+## Step 3. Compute the best-fit wCDM parameters
 ```
-fit_wCDM.Pan_original.py
-fit_wCDM.DES_original.py
-fit_wCDM.Joint_original.py
-fit_wCDM.Pan_age_corrected.py
-fit_wCDM.DES_age_corrected.py
-fit_wCDM.Joint_age_corrected.py
+wCDM_fit_floatH0.py
+wCDM_fit_fixedH0.py```
 ```
-
-#### Logarithmic luminosity-distance relation
-
-```
-fit_Loga.Pan_original.py
-fit_Loga.DES_original.py
-fit_Loga.Joint_original.py
-fit_Loga.Pan_age_corrected.py
-fit_Loga.DES_age_corrected.py
-fit_Loga.Joint_age_corrected.py
-```
-
-#### Quadratic logarithmic relation
-
-```
-fit_QuadraticLoga.Joint_original.py
-fit_QuadraticLoga.Joint_age_corrected.py
-```
-
-The fitting scripts generate intermediate output text files containing only the numerical quantities required by the plotting and table-generation scripts.
-
-## Step 3. Generate the manuscript tables
-
-```
-make_Table_1.py
-make_Table_C1.py
-make_Tables_D1_and_D2.py
-make_Table_E1.py
-make_Tables_G1_and_G2.py
-```
-
-## Step 4. Generate the manuscript figures
-
-```
-make_Figure_1.py
-make_Figure_2_upper_panel.py
-make_Figure_2_lower_panel.py
-make_Figure_3.py
-```
-
-## Optional: Run the complete workflow
-
-For convenience, the repository also includes
-
-```
-RUN_ALL.py
-```
-
-which executes all scripts in the correct order to reproduce the complete set of numerical results, tables, and figures. The total runtime is approximately 5 minutes.
 
 ---
 
@@ -195,20 +114,6 @@ The analyses employ generalized least squares using the published covariance mat
 For the Pantheon+ and DES joint analyses, the two surveys are combined using a block-diagonal covariance matrix.
 
 When fitting the joint datasets, the parameters $H_{0}^{\rm Pan}$ and $H_{0}^{\rm DES}$ are analytically profiled independently. No other nuisance parameters are introduced.
-
----
-
-# Output
-
-The fitting scripts generate intermediate output text files that are subsequently used by the table and figure generation scripts. These intermediate files should not be edited manually.
-
-Running the scripts in the order described above reproduces
-
-* Best-fit cosmological parameters and their error bars,
-* Likelihood contours,
-* Manuscript tables,
-* Manuscript figures.
-
 ---
 
 # Notes on Reproducibility
