@@ -11,8 +11,8 @@ import time
 warnings.filterwarnings("ignore", category=UserWarning)
 
 # User-editable inputs / filenames
-w_grid    = np.linspace(-1.0, 0.0, 21)
-zeta_grid = np.linspace(-1.0, 1.0, 41)
+w_grid    = np.linspace(-1.0, 0.0, 51)
+zeta_grid = np.linspace(-1.0, 1.0, 101)
 
 # --------------------------
 AGE_CORRECTION_LIST = ([0, 1])
